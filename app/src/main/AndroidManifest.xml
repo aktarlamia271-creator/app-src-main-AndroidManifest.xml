@@ -1,0 +1,253 @@
+}
+
+        root.addView(title, lp())
+        root.addView(etLink, lp())
+        root.addView(btn, lp())
+        root.addView(bar, lp())
+        root.addView(tvStatus, lp())
+        setContentView(root)
+
+        // অন্য অ্যাপ থেকে "Share" করলে লিংক নিজে থেকেই বসে যাবে
+        if (intent?.action == Intent.ACTION_SEND) {
+            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { t ->
+                extractUrl(t)?.let { etLink.setText(it) }
+            }
+        }
+        btn.setOnClickListener { startDownload() }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        scope.cancel()
+    }
+
+    private fun extractUrl(text: String): String? =
+        Regex("https?://\\S+").find(text)?.value
+
+    private fun startDownload() {
+        val url = extractUrl(etLink.text.toString())
+        if (url == null) {
+            tvStatus.text = "সঠিক লিংক দিন (https:// দিয়ে শুরু)"
+            return
+        }
+        if (!App.ready) {
+            tvStatus.text = App.initError?.let { "ত্রুটি: $it" }
+                ?: "অ্যাপ প্রস্তুত হচ্ছে, কয়েক সেকেন্ড পর আবার চাপুন"
+            return
+        }
+
+        btn.isEnabled = false
+        bar.progress = 0
+        tvStatus.text = "ডাউনলোড শুরু হচ্ছে..."
+
+        scope.launch {
+            try {
+                val saved = withContext(Dispatchers.IO) { download(url) }
+                bar.progress = 100
+                tvStatus.text = "সম্পন্ন! গ্যালারির Movies/SaidulVideoDownloader ফোল্ডারে সেভ হয়েছে:\n$saved"
+            } catch (e: Exception) {
+                tvStatus.text = "ব্যর্থ: ${e.message}"
+            } finally {
+                btn.isEnabled = true
+            }
+        }
+    }
+
+    private fun download(url: String): String {
+        val dir = File(getExternalFilesDir(null), "dl")
+        dir.deleteRecursively()
+        dir.mkdirs()
+
+        val request = YoutubeDLRequest(url)
+        request.addOption("-o", "${dir.absolutePath}/%(title).80s.%(ext)s")
+        // সর্বোচ্চ কোয়ালিটি: সেরা ভিডিও + সেরা অডিও জোড়া লাগানো
+        request.addOption("-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b")
+        request.addOption("--merge-output-format", "mp4")
+        request.addOption("--no-playlist")
+
+        YoutubeDL.getInstance().execute(request, "saidul_dl") { progress, eta, _ ->
+            runOnUiThread {
+                val p = progress.toInt().coerceIn(0, 100)
+                bar.progress = p
+                tvStatus.text = "ডাউনলোড হচ্ছে... $p% (বাকি ${eta}s)"
+            }
+        }
+
+        val file = dir.listFiles()?.filter { it.isFile }?.maxByOrNull { it.lastModified() }
+            ?: throw IllegalStateException("ফাইল পাওয়া যায়নি")
+
+        val mime = when (file.extension.lowercase()) {
+            "mp4" -> "video/mp4"
+            "mkv" -> "video/x-matroska"
+            "webm" -> "video/webm"
+            else -> "video/*"
+        }
+        val values = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
+            put(MediaStore.Video.Media.MIME_TYPE, mime)
+            put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/SaidulVideoDownloader")
+        }
+        val uri = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+            ?: throw IllegalStateException("গ্যালারিতে সেভ করা যায়নি")
+        contentResolver.openOutputStream(uri)?.use { out ->
+            file.inputStream().use { it.copyTo(out) }
+        }
+        val name = file.name
+        file.delete()
+        return name
+    }
+}
+
+
+==================================================
+ফাইল 7/7
+ফাইলের নাম:  .github/workflows/build.yml
+==================================================
+
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+      - run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SaidulVideoDownloader-apk
+          path: app/build/outputs/apk/debug/app}
+
+        root.addView(title, lp())
+        root.addView(etLink, lp())
+        root.addView(btn, lp())
+        root.addView(bar, lp())
+        root.addView(tvStatus, lp())
+        setContentView(root)
+
+        // অন্য অ্যাপ থেকে "Share" করলে লিংক নিজে থেকেই বসে যাবে
+        if (intent?.action == Intent.ACTION_SEND) {
+            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { t ->
+                extractUrl(t)?.let { etLink.setText(it) }
+            }
+        }
+        btn.setOnClickListener { startDownload() }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        scope.cancel()
+    }
+
+    private fun extractUrl(text: String): String? =
+        Regex("https?://\\S+").find(text)?.value
+
+    private fun startDownload() {
+        val url = extractUrl(etLink.text.toString())
+        if (url == null) {
+            tvStatus.text = "সঠিক লিংক দিন (https:// দিয়ে শুরু)"
+            return
+        }
+        if (!App.ready) {
+            tvStatus.text = App.initError?.let { "ত্রুটি: $it" }
+                ?: "অ্যাপ প্রস্তুত হচ্ছে, কয়েক সেকেন্ড পর আবার চাপুন"
+            return
+        }
+
+        btn.isEnabled = false
+        bar.progress = 0
+        tvStatus.text = "ডাউনলোড শুরু হচ্ছে..."
+
+        scope.launch {
+            try {
+                val saved = withContext(Dispatchers.IO) { download(url) }
+                bar.progress = 100
+                tvStatus.text = "সম্পন্ন! গ্যালারির Movies/SaidulVideoDownloader ফোল্ডারে সেভ হয়েছে:\n$saved"
+            } catch (e: Exception) {
+                tvStatus.text = "ব্যর্থ: ${e.message}"
+            } finally {
+                btn.isEnabled = true
+            }
+        }
+    }
+
+    private fun download(url: String): String {
+        val dir = File(getExternalFilesDir(null), "dl")
+        dir.deleteRecursively()
+        dir.mkdirs()
+
+        val request = YoutubeDLRequest(url)
+        request.addOption("-o", "${dir.absolutePath}/%(title).80s.%(ext)s")
+        // সর্বোচ্চ কোয়ালিটি: সেরা ভিডিও + সেরা অডিও জোড়া লাগানো
+        request.addOption("-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b")
+        request.addOption("--merge-output-format", "mp4")
+        request.addOption("--no-playlist")
+
+        YoutubeDL.getInstance().execute(request, "saidul_dl") { progress, eta, _ ->
+            runOnUiThread {
+                val p = progress.toInt().coerceIn(0, 100)
+                bar.progress = p
+                tvStatus.text = "ডাউনলোড হচ্ছে... $p% (বাকি ${eta}s)"
+            }
+        }
+
+        val file = dir.listFiles()?.filter { it.isFile }?.maxByOrNull { it.lastModified() }
+            ?: throw IllegalStateException("ফাইল পাওয়া যায়নি")
+
+        val mime = when (file.extension.lowercase()) {
+            "mp4" -> "video/mp4"
+            "mkv" -> "video/x-matroska"
+            "webm" -> "video/webm"
+            else -> "video/*"
+        }
+        val values = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
+            put(MediaStore.Video.Media.MIME_TYPE, mime)
+            put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/SaidulVideoDownloader")
+        }
+        val uri = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+            ?: throw IllegalStateException("গ্যালারিতে সেভ করা যায়নি")
+        contentResolver.openOutputStream(uri)?.use { out ->
+            file.inputStream().use { it.copyTo(out) }
+        }
+        val name = file.name
+        file.delete()
+        return name
+    }
+}
+
+
+==================================================
+ফাইল 7/7
+ফাইলের নাম:  .github/workflows/build.yml
+==================================================
+
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+      - run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SaidulVideoDownloader-apk
+          path: app/build/outputs/apk/debug/app
